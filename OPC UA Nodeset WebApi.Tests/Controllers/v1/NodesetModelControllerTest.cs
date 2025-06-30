@@ -74,20 +74,7 @@ public class NodesetModelControllerTest : TestBase
         await LoadNodesetModel("opcfoundation.org.UA.NodeSet2.xml");
         await LoadNodesetModel("opcfoundation.org.UA.DI.NodeSet2.xml");
 
-        EnsureNodeSetsDirectoryExists();
-
-        var xmlPath = Path.Combine(AppContext.BaseDirectory, "TestData", "opcfoundation.org.UA.Machinery.xml");
-        var fileBytes = await File.ReadAllBytesAsync(xmlPath);
-        var base64Xml = Convert.ToBase64String(fileBytes);
-        var requestBody = new
-        {
-            projectId = _projectId,
-            xmlBase64 = base64Xml
-        };
-        var json = JsonSerializer.Serialize(requestBody);
-        var body = new StringContent(json, Encoding.UTF8, "application/json");
-
-        var response = await _client.PostAsync("/api/v1/nodeset-model/upload-xml-from-base-64", body);
+        var response = await UploadXmlFromBase64("opcfoundation.org.UA.Machinery.xml", "/api/v1/nodeset-model/upload-xml-from-base-64");
 
         Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("http:opcfoundation.orgUAMachinery", await response.Content.ReadAsStringAsync());

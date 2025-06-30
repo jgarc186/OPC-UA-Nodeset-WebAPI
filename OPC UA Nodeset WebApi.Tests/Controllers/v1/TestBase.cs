@@ -50,4 +50,20 @@ public class TestBase : IClassFixture<WebApplicationFactory<Program>>
             Directory.CreateDirectory(path);
         }
     }
+
+    public async Task<HttpResponseMessage> UploadXmlFromBase64(string xmlFileName, string endpoint)
+    {
+        EnsureNodeSetsDirectoryExists();
+        var xmlPath = Path.Combine(AppContext.BaseDirectory, "TestData", xmlFileName);
+        var fileBytes = await File.ReadAllBytesAsync(xmlPath);
+        var base64Xml = Convert.ToBase64String(fileBytes);
+        var requestBody = new
+        {
+            projectId = _projectId,
+            xmlBase64 = base64Xml
+        };
+        var json = JsonSerializer.Serialize(requestBody);
+        var body = new StringContent(json, Encoding.UTF8, "application/json");
+        return await _client.PostAsync(endpoint, body);
+    }
 }
