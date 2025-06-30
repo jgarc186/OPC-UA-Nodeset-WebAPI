@@ -4,31 +4,11 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using System.Text;
 using System.Text.Json;
 
-public class NodesetModelControllerTest : IClassFixture<WebApplicationFactory<Program>>
+public class NodesetModelControllerTest : TestBase
 {
-    private readonly WebApplicationFactory<Program> _factory;
 
-    private HttpClient _client;
-
-    private string _projectId;
-
-    public NodesetModelControllerTest(WebApplicationFactory<Program> factory)
+    public NodesetModelControllerTest(WebApplicationFactory<Program> factory) : base(factory)
     {
-        _factory = factory;
-    }
-
-    private async Task createProject()
-    {
-        _client = _factory.CreateClient();
-        var body = new StringContent(
-            "{\"name\":\"Test Project\",\"owner\":\"Foo\"}",
-            Encoding.UTF8,
-            "application/json"
-        );
-        var response = await _client.PostAsync("/api/v1/project", body);
-        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
-        var content = await response.Content.ReadAsStringAsync();
-        _projectId = JsonDocument.Parse(content).RootElement.GetProperty("projectId").GetString();
     }
 
     [Fact]
@@ -36,13 +16,34 @@ public class NodesetModelControllerTest : IClassFixture<WebApplicationFactory<Pr
     {
         await createProject();
 
-        var body = new StringContent(
-            $"{{\"projectId\":\"{_projectId}\",\"uri\":\"opcfoundation.org.UA.NodeSet2.xml\"}}",
-            Encoding.UTF8,
-            "application/json"
-        );
-        var response = await _client.PostAsync("/api/v1/nodeset-model/upload-xml-from-base-64", body);
-        // Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        var response = await loadNodesetModel("opcfoundation.org.UA.NodeSet2.xml");
 
+        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("http:opcfoundation.orgUA", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task TestWhenLoadingDINodesetWithValidUri_ShouldReturnSuccess()
+    {
+        await createProject();
+
+        // We are loading the Base Nodeset first because this is a dependency for the DI Nodeset
+        await loadNodesetModel("opcfoundation.org.UA.NodeSet2.xml");
+
+        // Then we load the DI Nodeset
+        var response = await loadNodesetModel("opcfoundation.org.UA.DI.NodeSet2.xml");
+
+        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("http:opcfoundation.orgUADI", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task TestWhenLoadingNodesetWithInvalidUri_ShouldReturnNotFound()
+    {
+        await createProject();
+
+        var response = await loadNodesetModel("invalid-uri.xml");
+
+        Assert.Equal(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
     }
 }
