@@ -4,6 +4,11 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using System.Text;
 using System.Text.Json;
 
+/**
+ * to run this set of tests paste the following command in the terminal:
+ *
+ * dotnet test --filter "FullyQualifiedName~NodesetModelControllerTest"
+ */
 public class NodesetModelControllerTest : TestBase
 {
     public NodesetModelControllerTest(WebApplicationFactory<Program> factory) : base(factory)
