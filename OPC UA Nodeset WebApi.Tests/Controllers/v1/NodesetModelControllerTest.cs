@@ -74,19 +74,16 @@ public class NodesetModelControllerTest : TestBase
         var xmlPath = Path.Combine(AppContext.BaseDirectory, "TestData", "opcfoundation.org.UA.Machinery.xml");
         var fileBytes = await File.ReadAllBytesAsync(xmlPath);
         var base64Xml = Convert.ToBase64String(fileBytes);
+        var requestBody = new
+        {
+            projectId = _projectId,
+            xmlBase64 = base64Xml
+        };
+        var json = JsonSerializer.Serialize(requestBody);
+        var body = new StringContent(json, Encoding.UTF8, "application/json");
 
-        var body = new StringContent(
-            JsonSerializer.Serialize(new
-            {
-                projectId = _projectId,
-                xmlBase64 = base64Xml,
-                fileName = "opcfoundation.org.UA.Machinery.xml"
-            }),
-            Encoding.UTF8,
-            "application/json"
-        );
         var response = await _client.PostAsync("/api/v1/nodeset-model/upload-xml-from-base-64", body);
 
-        // Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
     }
 }
