@@ -1,6 +1,7 @@
+namespace OPC_UA_Nodeset_WebApi.Tests;
+
 using Microsoft.AspNetCore.Mvc.Testing;
 using System.Text;
-namespace OPC_UA_Nodeset_WebApi.Tests;
 
 public class BasicTest : IClassFixture<WebApplicationFactory<Program>>
 {
