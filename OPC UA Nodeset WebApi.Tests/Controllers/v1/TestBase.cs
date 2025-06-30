@@ -17,7 +17,7 @@ public class TestBase : IClassFixture<WebApplicationFactory<Program>>
         _factory = factory;
     }
 
-    protected async Task createProject()
+    protected async Task CreateProject()
     {
         _client = _factory.CreateClient();
         var body = new StringContent(
@@ -31,7 +31,7 @@ public class TestBase : IClassFixture<WebApplicationFactory<Program>>
         _projectId = JsonDocument.Parse(content).RootElement.GetProperty("projectId").GetString();
     }
 
-    protected async Task<HttpResponseMessage> loadNodesetModel(string uri)
+    protected async Task<HttpResponseMessage> LoadNodesetModel(string uri)
     {
         var body = new StringContent(
             $"{{\"projectId\":\"{_projectId}\",\"uri\":\"{uri}\"}}",
@@ -39,5 +39,15 @@ public class TestBase : IClassFixture<WebApplicationFactory<Program>>
             "application/json"
         );
         return await _client.PostAsync("/api/v1/nodeset-model/load-xml-from-server-async", body);
+    }
+
+    public void EnsureNodeSetsDirectoryExists()
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "NodeSets");
+        if (!Directory.Exists(path))
+        {
+
+            Directory.CreateDirectory(path);
+        }
     }
 }
