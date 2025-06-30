@@ -85,5 +85,6 @@ public class NodesetModelControllerTest : TestBase
         var response = await _client.PostAsync("/api/v1/nodeset-model/upload-xml-from-base-64", body);
 
         Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("http:opcfoundation.orgUAMachinery", await response.Content.ReadAsStringAsync());
     }
 }
