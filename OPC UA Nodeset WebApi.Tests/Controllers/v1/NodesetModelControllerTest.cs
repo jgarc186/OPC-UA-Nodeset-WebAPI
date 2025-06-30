@@ -6,7 +6,6 @@ using System.Text.Json;
 
 public class NodesetModelControllerTest : TestBase
 {
-
     public NodesetModelControllerTest(WebApplicationFactory<Program> factory) : base(factory)
     {
     }
@@ -38,11 +37,26 @@ public class NodesetModelControllerTest : TestBase
     }
 
     [Fact]
-    public async Task TestWhenLoadingNodesetWithInvalidUri_ShouldReturnNotFound()
+    public async Task TestWhenLoadingNodesetWithInvalidUri_ShouldReturnInternalServerError()
     {
         await createProject();
 
         var response = await loadNodesetModel("invalid-uri.xml");
+
+        Assert.Equal(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task TestWhenLoadingNodesetWithEmptyUri_ShouldReturnInternalServerError()
+    {
+        await createProject();
+
+        var body = new StringContent(
+            $"{{\"projectId\":\"{_projectId}\",\"uri\":\"\"}}",
+            Encoding.UTF8,
+            "application/json"
+        );
+        var response = await _client.PostAsync("/api/v1/nodeset-model/load-xml-from-server-async", body);
 
         Assert.Equal(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
     }
