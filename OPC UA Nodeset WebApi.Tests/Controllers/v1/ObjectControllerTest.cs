@@ -101,4 +101,45 @@ public class ObjectControllerTest : TestBase
 
         Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    [Fact]
+    public async Task TestItCreatesBulkObjects()
+    {
+        await Setup();
+
+        var response = await PostAsync("/api/v1/object/bulk-processing", new
+        {
+            projectId = _projectId,
+            uri = "http:opcfoundation.orgUAMachinery",
+            parentNodeId = "nsu=http://opcfoundation.org/UA/;i=24",
+            types = new[]
+            {
+                new {
+                    browseName = "manager1",
+                    parentNodeId = "nsu=http://opcfoundation.org/UA/;i=24",
+                    displayName = "Manager 1",
+                    typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/;i=1"
+                },
+                new {
+                    browseName = "manager2",
+                    parentNodeId = "nsu=http://opcfoundation.org/UA/;i=24",
+                    displayName = "Manager 2",
+                    typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/;i=1"
+                },
+                new {
+                    browseName = "manager2",
+                    parentNodeId = "nsu=http://opcfoundation.org/UA/;i=24",
+                    displayName = "Manager 2",
+                    typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/;i=1"
+                },
+            }
+        });
+
+        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        var content = await response.Content.ReadAsStringAsync();
+        var jsonResponse = JsonDocument.Parse(content).RootElement;
+        var firstItem = jsonResponse[0];
+        var parentNodeId = firstItem.GetProperty("parentNodeId").GetString();
+        Assert.Equal("nsu=http://opcfoundation.org/UA/;i=24", parentNodeId);
+    }
 }
