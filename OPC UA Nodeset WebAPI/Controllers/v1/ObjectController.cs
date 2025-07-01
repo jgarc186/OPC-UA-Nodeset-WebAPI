@@ -260,6 +260,7 @@ namespace OPC_UA_Nodeset_WebAPI.Controllers.v1
             }
             catch (Exception ex)
             {
+                Console.WriteLine("Error processing bulk request: " + ex.Message);
                 _logger.LogError(ex, "Error processing bulk request");
                 return BadRequest("Error processing bulk request: " + ex.Message);
             }
