@@ -15,17 +15,16 @@ public class TestBase : IClassFixture<WebApplicationFactory<Program>>
     public TestBase(WebApplicationFactory<Program> factory)
     {
         _factory = factory;
+        _client = _factory.CreateClient();
     }
 
     protected async Task CreateProject()
     {
-        _client = _factory.CreateClient();
-        var body = new StringContent(
-            "{\"name\":\"Test Project\",\"owner\":\"Foo\"}",
-            Encoding.UTF8,
-            "application/json"
-        );
-        var response = await _client.PostAsync("/api/v1/project", body);
+        var response = await PostAsync("/api/v1/project", new
+        {
+            name = "Test Project",
+            owner = "Foo"
+        });
         Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
         var content = await response.Content.ReadAsStringAsync();
         _projectId = JsonDocument.Parse(content).RootElement.GetProperty("projectId").GetString();
@@ -33,12 +32,11 @@ public class TestBase : IClassFixture<WebApplicationFactory<Program>>
 
     protected async Task<HttpResponseMessage> LoadNodesetModel(string uri)
     {
-        var body = new StringContent(
-            $"{{\"projectId\":\"{_projectId}\",\"uri\":\"{uri}\"}}",
-            Encoding.UTF8,
-            "application/json"
-        );
-        return await _client.PostAsync("/api/v1/nodeset-model/load-xml-from-server-async", body);
+        return await PostAsync("/api/v1/nodeset-model/load-xml-from-server-async", new
+        {
+            projectId = _projectId,
+            uri = uri
+        });
     }
 
     public void EnsureNodeSetsDirectoryExists()
@@ -51,19 +49,32 @@ public class TestBase : IClassFixture<WebApplicationFactory<Program>>
         }
     }
 
-    public async Task<HttpResponseMessage> UploadXmlFromBase64(string xmlFileName, string endpoint)
+    public async Task<HttpResponseMessage> UploadXmlFromBase64(string xmlFileName)
     {
         EnsureNodeSetsDirectoryExists();
         var xmlPath = Path.Combine(AppContext.BaseDirectory, "TestData", xmlFileName);
         var fileBytes = await File.ReadAllBytesAsync(xmlPath);
         var base64Xml = Convert.ToBase64String(fileBytes);
-        var requestBody = new
+        return await PostAsync("/api/v1/nodeset-model/upload-xml-from-base-64", new
         {
             projectId = _projectId,
             xmlBase64 = base64Xml
-        };
+        });
+    }
+
+    private StringContent CreateJsonContent(object requestBody)
+    {
         var json = JsonSerializer.Serialize(requestBody);
-        var body = new StringContent(json, Encoding.UTF8, "application/json");
-        return await _client.PostAsync(endpoint, body);
+        return new StringContent(
+            json,
+            Encoding.UTF8,
+            "application/json"
+        );
+    }
+
+    public async Task<HttpResponseMessage> PostAsync(string url, object requestBody)
+    {
+        var body = CreateJsonContent(requestBody);
+        return await _client.PostAsync(url, body);
     }
 }

@@ -74,7 +74,7 @@ public class NodesetModelControllerTest : TestBase
         await LoadNodesetModel("opcfoundation.org.UA.NodeSet2.xml");
         await LoadNodesetModel("opcfoundation.org.UA.DI.NodeSet2.xml");
 
-        var response = await UploadXmlFromBase64("opcfoundation.org.UA.Machinery.xml", "/api/v1/nodeset-model/upload-xml-from-base-64");
+        var response = await UploadXmlFromBase64("opcfoundation.org.UA.Machinery.xml");
 
         Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("http:opcfoundation.orgUAMachinery", await response.Content.ReadAsStringAsync());
