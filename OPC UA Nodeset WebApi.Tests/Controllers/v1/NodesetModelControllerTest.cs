@@ -48,7 +48,7 @@ public class NodesetModelControllerTest : TestBase
 
         var response = await LoadNodesetModel("invalid-uri.xml");
 
-        Assert.Equal(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
@@ -63,7 +63,7 @@ public class NodesetModelControllerTest : TestBase
         );
         var response = await _client.PostAsync("/api/v1/nodeset-model/load-xml-from-server-async", body);
 
-        Assert.Equal(System.Net.HttpStatusCode.InternalServerError, response.StatusCode);
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
