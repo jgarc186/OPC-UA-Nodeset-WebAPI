@@ -118,19 +118,19 @@ public class ObjectControllerTest : TestBase
                     browseName = "manager1",
                     parentNodeId = "nsu=http://opcfoundation.org/UA/;i=24",
                     displayName = "Manager 1",
-                    typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/;i=1"
+                    typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/;i=61"
                 },
                 new {
                     browseName = "manager2",
                     parentNodeId = "nsu=http://opcfoundation.org/UA/;i=24",
                     displayName = "Manager 2",
-                    typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/;i=1"
+                    typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/;i=61"
                 },
                 new {
                     browseName = "manager2",
                     parentNodeId = "nsu=http://opcfoundation.org/UA/;i=24",
                     displayName = "Manager 2",
-                    typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/;i=1"
+                    typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/;i=61"
                 },
             }
         });
@@ -140,6 +140,8 @@ public class ObjectControllerTest : TestBase
         var jsonResponse = JsonDocument.Parse(content).RootElement;
         var firstItem = jsonResponse[0];
         var parentNodeId = firstItem.GetProperty("parentNodeId").GetString();
+        var typeDefinitionNodeId = firstItem.GetProperty("typeDefinitionNodeId").GetString();
         Assert.Equal("nsu=http://opcfoundation.org/UA/;i=24", parentNodeId);
+        Assert.Equal("nsu=http://opcfoundation.org/UA/;i=61", typeDefinitionNodeId);
     }
 }
