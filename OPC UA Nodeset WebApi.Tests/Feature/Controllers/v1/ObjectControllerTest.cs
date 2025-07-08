@@ -26,7 +26,7 @@ public class ObjectControllerTest : TestBase
     }
 
     [Fact]
-    public async Task TestWhenCreatingAnInstanceObject()
+    public async Task TestICreatesAnInstanceObject()
     {
         await Setup();
 
@@ -35,7 +35,7 @@ public class ObjectControllerTest : TestBase
             projectId = _projectId,
             uri = "http:opcfoundation.orgUAMachinery",
             parentNodeId = "nsu=http://opcfoundation.org/UA/;i=24",
-            typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/;i=1",
+            typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/;i=61",
             nodeClass = "Object",
             browseName = "manager",
             displayName = "Manager",
@@ -46,26 +46,7 @@ public class ObjectControllerTest : TestBase
     }
 
     [Fact]
-    public async Task TestWhenCreatingAnInstanceObjectWithInvalidParentNodeId()
-    {
-        await Setup();
-
-        var response = await PostAsync("/api/v1/object", new
-        {
-            projectId = _projectId,
-            uri = "http:opcfoundation.orgUAMachinery",
-            parentNodeId = "nsu=http://opcfoundation.org/UA/;i=9999", // Invalid NodeId
-            typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/;i=1",
-            nodeClass = "Object",
-            browseName = "manager",
-            displayName = "Manager",
-        });
-
-        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task TestWhenCreatingAnInstanceObjectWithNoProjectId()
+    public async Task TestItFailsToCreateAnInstanceObjectWithEmptyProjectId()
     {
         await Setup();
 
@@ -84,7 +65,7 @@ public class ObjectControllerTest : TestBase
     }
 
     [Fact]
-    public async Task TestWhenCreatingAnInstanceObjectWithEmptyBrowseName()
+    public async Task TestItCreatesAnInstanceObjectWithEmptyBrowseName()
     {
         await Setup();
 
@@ -93,7 +74,7 @@ public class ObjectControllerTest : TestBase
             projectId = _projectId,
             uri = "http:opcfoundation.orgUAMachinery",
             parentNodeId = "nsu=http://opcfoundation.org/UA/;i=24",
-            typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/;i=1",
+            typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/;i=61",
             nodeClass = "Object",
             browseName = "",
             displayName = "Manager",
@@ -143,5 +124,25 @@ public class ObjectControllerTest : TestBase
         var typeDefinitionNodeId = firstItem.GetProperty("typeDefinitionNodeId").GetString();
         Assert.Equal("nsu=http://opcfoundation.org/UA/;i=24", parentNodeId);
         Assert.Equal("nsu=http://opcfoundation.org/UA/;i=61", typeDefinitionNodeId);
+    }
+
+    [Fact]
+    public async Task TestItFailsCreatingObjectWithInvalidTypeDefinition()
+    {
+        await Setup();
+
+        var response = await PostAsync("/api/v1/object", new
+        {
+            projectId = _projectId,
+            uri = "http:opcfoundation.orgUAMachinery",
+            parentNodeId = "nsu=http://opcfoundation.org/UA/;i=24",
+            typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/Machinery/;i=1012", // Invalid TypeDefinitionNodeId
+            nodeClass = "Object",
+            browseName = "manager",
+            displayName = "Manager",
+        });
+
+        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("nsu=http://opcfoundation.org/UA/Machinery/;i=1012", JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("typeDefinitionNodeId").GetString());
     }
 }

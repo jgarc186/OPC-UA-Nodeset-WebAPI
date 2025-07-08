@@ -41,20 +41,25 @@ public class ObjectModelService
     {
         var activeNamespace = UaNodeResponse.GetNameSpaceFromNodeId(type.TypeDefinitionNodeId);
         var objectTypeModel = activeProjectInstance.NodeSetModels.FirstOrDefault(x => x.Value.ModelUri == activeNamespace).Value;
-        if (String.IsNullOrEmpty(activeNamespace) || objectTypeModel == null)
+
+        if (objectTypeModel == null)
         {
-            // this can potentially happen if the type definition is in the active nodeset model but not in the project instance's model
-            // we  have to account for the active nodeset model that can have this type definition 
-            if (activeNodesetModel.ModelUri == activeNamespace)
+            // If the object type Model is not found, it can be that we are trying to reference the activeNodesetModel
+            // Not the activeProjectInstance. so lets check if the activeNodesetModel is the one we are looking for 
+            if (activeNodesetModel.ModelUri != activeNamespace)
             {
-                objectTypeModel = activeNodesetModel;
+                throw new KeyNotFoundException($"Object type model for namespace {activeNamespace} not found in project {activeProjectInstance.Name}.");
             }
-            else
-            {
-                throw new KeyNotFoundException($"Object type definition for {type.TypeDefinitionNodeId} not found in namespace {activeNamespace}.");
-            }
+            objectTypeModel = activeNodesetModel;
         }
-        return objectTypeModel.ObjectTypes.FirstOrDefault(ot => ot.NodeId == type.TypeDefinitionNodeId) as ObjectTypeModel;
+
+        var currentObjectType = objectTypeModel.ObjectTypes.FirstOrDefault(x => x.NodeId == type.TypeDefinitionNodeId);
+        if (currentObjectType == null)
+        {
+            throw new KeyNotFoundException($"Object type with NodeId {type.TypeDefinitionNodeId} not found in namespace {activeNamespace}.");
+        }
+
+        return currentObjectType;
     }
 
     public ObjectModel CreateObjectModel(string id, string uri, UaObject type)
