@@ -1,89 +1,120 @@
-using CESMII.OpcUa.NodeSetModel;
+namespace OPC_UA_Nodeset_WebAPI.Services;
+
 using Microsoft.AspNetCore.Mvc;
+using CESMII.OpcUa.NodeSetModel;
 using OPC_UA_Nodeset_WebAPI.Model.v1.Requests;
 using OPC_UA_Nodeset_WebAPI.Model.v1.Responses;
 using OPC_UA_Nodeset_WebAPI.UA_Nodeset_Utilities;
 
-namespace OPC_UA_Nodeset_WebAPI.Services
+public class ObjectModelService
 {
-    public class ObjectModelService
+    private ApplicationInstance ApplicationInstance { get; set; }
+
+    public ObjectModelService(ApplicationInstance applicationInstance)
     {
-        private ApplicationInstance ApplicationInstance { get; set; }
+        ApplicationInstance = applicationInstance;
+    }
 
-        public ObjectModelService(ApplicationInstance applicationInstance)
+    private NodeSetProjectInstance _GetActiveProjectInstance(string id)
+    {
+        var projectInstanceResult = ApplicationInstance.GetNodeSetProjectInstance(id) as ObjectResult;
+        if (projectInstanceResult.StatusCode != StatusCodes.Status200OK)
         {
-            ApplicationInstance = applicationInstance;
+            throw new KeyNotFoundException($"Project with ID {id} not found.");
         }
+        return projectInstanceResult.Value as NodeSetProjectInstance;
+    }
 
-        public ObjectModel CreateObjectModel(string id, string uri, UaObject type)
+    private NodeSetModel _GetActiveNodeSetModel(string id, string uri, NodeSetProjectInstance activeProjectInstance)
+    {
+        var activeNodesetModelResult = ApplicationInstance.GetNodeSetModel(id, uri) as ObjectResult;
+        return activeNodesetModelResult.Value as NodeSetModel;
+    }
+
+    private NodeModel _GetParentModel(NodeSetProjectInstance activeProjectInstance, UaObject type)
+    {
+        var parentModel = activeProjectInstance.NodeSetModels.FirstOrDefault(x => x.Value.ModelUri == UaNodeResponse.GetNameSpaceFromNodeId(type.ParentNodeId)).Value;
+        return parentModel.AllNodesByNodeId[type.ParentNodeId] as NodeModel;
+    }
+
+    private ObjectTypeModel _GetObjectTypeDefinition(NodeSetProjectInstance activeProjectInstance, NodeSetModel activeNodesetModel, UaObject type)
+    {
+        var activeNamespace = UaNodeResponse.GetNameSpaceFromNodeId(type.TypeDefinitionNodeId);
+        var objectTypeModel = activeProjectInstance.NodeSetModels.FirstOrDefault(x => x.Value.ModelUri == activeNamespace).Value;
+        if (String.IsNullOrEmpty(activeNamespace) || objectTypeModel == null)
         {
-            // add new object
-            var projectInstanceResult = ApplicationInstance.GetNodeSetProjectInstance(id) as ObjectResult;
-            var activeProjectInstance = projectInstanceResult.Value as NodeSetProjectInstance;
-            var activeNodesetModelResult = ApplicationInstance.GetNodeSetModel(id, uri) as ObjectResult;
-            var activeNodesetModel = activeNodesetModelResult.Value as NodeSetModel;
-
-            // look up parent object
-            var aParentModel = activeProjectInstance.NodeSetModels.FirstOrDefault(x => x.Value.ModelUri == UaNodeResponse.GetNameSpaceFromNodeId(type.ParentNodeId)).Value;
-            var parentNode = aParentModel.AllNodesByNodeId[type.ParentNodeId];
-
-            // look up type definition
-            var aObjectTypeModel = activeProjectInstance.NodeSetModels.FirstOrDefault(x => x.Value.ModelUri == UaNodeResponse.GetNameSpaceFromNodeId(type.TypeDefinitionNodeId)).Value;
-            var aObjectTypeDefinition = aObjectTypeModel.ObjectTypes.FirstOrDefault(ot => ot.NodeId == type.TypeDefinitionNodeId);
-
-            var newObjectModel = new ObjectModel
+            // this can potentially happen if the type definition is in the active nodeset model but not in the project instance's model
+            // we  have to account for the active nodeset model that can have this type definition 
+            if (activeNodesetModel.ModelUri == activeNamespace)
             {
-                NodeSet = activeNodesetModel,
-                NodeId = UaNodeResponse.GetNodeIdFromIdAndNameSpace((activeProjectInstance.NextNodeIds[activeNodesetModel.ModelUri]++).ToString(), activeNodesetModel.ModelUri),
-                Parent = parentNode,
-                TypeDefinition = aObjectTypeDefinition,
-                DisplayName = new List<NodeModel.LocalizedText> { type.DisplayName },
-                BrowseName = type.BrowseName,
-                Description = new List<NodeModel.LocalizedText> { type.Description == null ? "" : type.Description },
-                Properties = new List<VariableModel>(),
-                DataVariables = new List<DataVariableModel>()
-            };
-
-            if (type.GenerateChildren.HasValue)
-            {
-                if (type.GenerateChildren.Value)
-                {
-                    aObjectTypeDefinition.Properties.ForEach(aProperty =>
-                    {
-                        newObjectModel.Properties.Add(new PropertyModel
-                        {
-                            NodeSet = activeNodesetModel,
-                            NodeId = UaNodeResponse.GetNodeIdFromIdAndNameSpace((activeProjectInstance.NextNodeIds[activeNodesetModel.ModelUri]++).ToString(), activeNodesetModel.ModelUri),
-                            Parent = newObjectModel,
-                            DisplayName = aProperty.DisplayName,
-                            BrowseName = aProperty.BrowseName,
-                            Description = aProperty.Description,
-                            DataType = aProperty.DataType,
-                            Value = aProperty.Value,
-                            EngineeringUnit = aProperty.EngineeringUnit,
-                        });
-                    });
-                    aObjectTypeDefinition.DataVariables.ForEach(aDataVariable =>
-                    {
-                        newObjectModel.DataVariables.Add(new DataVariableModel
-                        {
-                            NodeSet = activeNodesetModel,
-                            NodeId = UaNodeResponse.GetNodeIdFromIdAndNameSpace((activeProjectInstance.NextNodeIds[activeNodesetModel.ModelUri]++).ToString(), activeNodesetModel.ModelUri),
-                            Parent = newObjectModel,
-                            DisplayName = aDataVariable.DisplayName,
-                            BrowseName = aDataVariable.BrowseName,
-                            Description = aDataVariable.Description,
-                            DataType = aDataVariable.DataType,
-                            Value = aDataVariable.Value,
-                            EngineeringUnit = aDataVariable.EngineeringUnit,
-                        });
-                    });
-                }
+                objectTypeModel = activeNodesetModel;
             }
-            activeNodesetModel.Objects.Add(newObjectModel);
-            activeNodesetModel.UpdateIndices();
-
-            return newObjectModel;
+            else
+            {
+                throw new KeyNotFoundException($"Object type definition for {type.TypeDefinitionNodeId} not found in namespace {activeNamespace}.");
+            }
         }
+        return objectTypeModel.ObjectTypes.FirstOrDefault(ot => ot.NodeId == type.TypeDefinitionNodeId) as ObjectTypeModel;
+    }
+
+    public ObjectModel CreateObjectModel(string id, string uri, UaObject type)
+    {
+        var activeProjectInstance = _GetActiveProjectInstance(id);
+        var activeNodesetModel = _GetActiveNodeSetModel(id, uri, activeProjectInstance);
+        var aObjectTypeDefinition = _GetObjectTypeDefinition(activeProjectInstance, activeNodesetModel, type);
+
+        var newObjectModel = new ObjectModel
+        {
+            NodeSet = activeNodesetModel,
+            NodeId = UaNodeResponse.GetNodeIdFromIdAndNameSpace((activeProjectInstance.NextNodeIds[activeNodesetModel.ModelUri]++).ToString(), activeNodesetModel.ModelUri),
+            Parent = _GetParentModel(activeProjectInstance, type),
+            TypeDefinition = aObjectTypeDefinition,
+            DisplayName = new List<NodeModel.LocalizedText> { type.DisplayName },
+            BrowseName = type.BrowseName,
+            Description = new List<NodeModel.LocalizedText> { type.Description == null ? "" : type.Description },
+            Properties = new List<VariableModel>(),
+            DataVariables = new List<DataVariableModel>()
+        };
+
+        if (type.GenerateChildren.HasValue)
+        {
+            if (type.GenerateChildren.Value)
+            {
+                aObjectTypeDefinition.Properties.ForEach(aProperty =>
+                {
+                    newObjectModel.Properties.Add(new PropertyModel
+                    {
+                        NodeSet = activeNodesetModel,
+                        NodeId = UaNodeResponse.GetNodeIdFromIdAndNameSpace((activeProjectInstance.NextNodeIds[activeNodesetModel.ModelUri]++).ToString(), activeNodesetModel.ModelUri),
+                        Parent = newObjectModel,
+                        DisplayName = aProperty.DisplayName,
+                        BrowseName = aProperty.BrowseName,
+                        Description = aProperty.Description,
+                        DataType = aProperty.DataType,
+                        Value = aProperty.Value,
+                        EngineeringUnit = aProperty.EngineeringUnit,
+                    });
+                });
+                aObjectTypeDefinition.DataVariables.ForEach(aDataVariable =>
+                {
+                    newObjectModel.DataVariables.Add(new DataVariableModel
+                    {
+                        NodeSet = activeNodesetModel,
+                        NodeId = UaNodeResponse.GetNodeIdFromIdAndNameSpace((activeProjectInstance.NextNodeIds[activeNodesetModel.ModelUri]++).ToString(), activeNodesetModel.ModelUri),
+                        Parent = newObjectModel,
+                        DisplayName = aDataVariable.DisplayName,
+                        BrowseName = aDataVariable.BrowseName,
+                        Description = aDataVariable.Description,
+                        DataType = aDataVariable.DataType,
+                        Value = aDataVariable.Value,
+                        EngineeringUnit = aDataVariable.EngineeringUnit,
+                    });
+                });
+            }
+        }
+        activeNodesetModel.Objects.Add(newObjectModel);
+        activeNodesetModel.UpdateIndices();
+
+        return newObjectModel;
     }
 }
