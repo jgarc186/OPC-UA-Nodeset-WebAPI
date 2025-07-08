@@ -127,7 +127,7 @@ public class ObjectControllerTest : TestBase
     }
 
     [Fact]
-    public async Task TestItFailsCreatingObjectWithInvalidTypeDefinition()
+    public async Task TestItFailsCreatingObjectWhenItReferencesItselfWithAnInvalidTypeDefinitionNodeId()
     {
         await Setup();
 
@@ -136,13 +136,89 @@ public class ObjectControllerTest : TestBase
             projectId = _projectId,
             uri = "http:opcfoundation.orgUAMachinery",
             parentNodeId = "nsu=http://opcfoundation.org/UA/;i=24",
-            typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/Machinery/;i=1012", // Invalid TypeDefinitionNodeId
+            typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/Machinery/;i=1", // Invalid TypeDefinitionNodeId
+            nodeClass = "Object",
+            browseName = "manager",
+            displayName = "Manager",
+        });
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task TestItCreatesObjectWhenItReferencesItselfWithValidTypeDefinitionNodeId()
+    {
+        await Setup();
+
+        var response = await PostAsync("/api/v1/object", new
+        {
+            projectId = _projectId,
+            uri = "http:opcfoundation.orgUAMachinery",
+            parentNodeId = "nsu=http://opcfoundation.org/UA/;i=24",
+            typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/Machinery/;i=1012", // Valid TypeDefinitionNodeId
             nodeClass = "Object",
             browseName = "manager",
             displayName = "Manager",
         });
 
         Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal("nsu=http://opcfoundation.org/UA/Machinery/;i=1012", JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.GetProperty("typeDefinitionNodeId").GetString());
+    }
+
+    [Fact]
+    public async Task TestItFailsCreatingObjectWhenItReferencesAnotherNodesetWithAnInvalidTypeDefinitionNodeId()
+    {
+        await Setup();
+
+        var response = await PostAsync("/api/v1/object", new
+        {
+            projectId = _projectId,
+            uri = "http:opcfoundation.orgUAMachinery",
+            parentNodeId = "nsu=http://opcfoundation.org/UA/;i=24",
+            typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/;i=1", // Invalid TypeDefinitionNodeId
+            nodeClass = "Object",
+            browseName = "manager",
+            displayName = "Manager",
+        });
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task TestItCreatesObjectWhenItReferencesAnotherNodesetWithValidTypeDefinitionNodeId()
+    {
+        await Setup();
+
+        var response = await PostAsync("/api/v1/object", new
+        {
+            projectId = _projectId,
+            uri = "http:opcfoundation.orgUAMachinery",
+            parentNodeId = "nsu=http://opcfoundation.org/UA/;i=24",
+            typeDefinitionNodeId = "nsu=http://opcfoundation.org/UA/;i=61", // Valid TypeDefinitionNodeId
+            nodeClass = "Object",
+            browseName = "manager",
+            displayName = "Manager",
+        });
+
+        Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task TestItFailsCreatingObjectWhenItReferencesAnInvalidNodeset()
+    {
+        await Setup();
+
+        var response = await PostAsync("/api/v1/object", new
+        {
+            projectId = _projectId,
+            uri = "http:opcfoundation.orgUAMachinery",
+            parentNodeId = "nsu=http://opcfoundation.org/UA/;i=24",
+            typeDefinitionNodeId = "nsu=http://opcfoundation.org/Invalid-Nodeset/;i=1", // Invalid Nodeset
+            nodeClass = "Object",
+            browseName = "manager",
+            displayName = "Manager",
+        });
+
+        Assert.Equal(System.Net.HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("Error creating new object: Object type model for namespace http://opcfoundation.org/Invalid-Nodeset/ not found in project Test Project.", await response.Content.ReadAsStringAsync());
     }
 }

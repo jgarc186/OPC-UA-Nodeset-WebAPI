@@ -44,8 +44,8 @@ public class ObjectModelService
 
         if (objectTypeModel == null)
         {
-            // If the object type Model is not found, it can be that we are trying to reference the activeNodesetModel
-            // Not the activeProjectInstance. so lets check if the activeNodesetModel is the one we are looking for 
+            // @NOTE: If the object type Model is not found, it can be the active NodesetModel is what we are looking for
+            // Not the activeProjectInstance. so lets check if the activeNodesetModel. 
             if (activeNodesetModel.ModelUri != activeNamespace)
             {
                 throw new KeyNotFoundException($"Object type model for namespace {activeNamespace} not found in project {activeProjectInstance.Name}.");
